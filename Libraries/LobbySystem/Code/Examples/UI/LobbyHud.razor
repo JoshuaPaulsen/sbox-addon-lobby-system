@@ -1,0 +1,81 @@
+@using Sandbox
+@using Sandbox.UI
+@using LobbySystem
+@inherits PanelComponent
+@namespace LobbySystem.Examples
+
+<root>
+	@if ( Dir is null )
+	{
+		<text></text>
+	}
+	else if ( Dir.MenuOpen || Dir.SuggestMenuOpen )
+	{
+		<div class="menu">
+			<div class="title">MULTIPLAYER LOBBY</div>
+			<div class="sub">@(Dir.MenuOpen ? "Choose a game mode" : "Suggest a mode to the host")</div>
+			<div class="row">
+				@for ( int i = 0; i < Dir.Modes.Count; i++ )
+				{
+					var idx = i;
+					<button class="mode" onclick=@(() => Dir.PickMode( idx ))>
+						<div class="k">@(idx + 1)</div>
+						<div class="n">@Dir.Modes[idx].DisplayName</div>
+					</button>
+				}
+			</div>
+			<button class="back" onclick=@(() => Dir.RequestCloseMenu())>Back to lobby  [E]</button>
+		</div>
+	}
+	else
+	{
+		<div class="top">
+			@if ( Dir.RoundLive )
+			{
+				<div class="mode">@(Dir.ActiveMode?.DisplayName ?? "")</div>
+				<div class="timer @(Dir.TimeLeftSeconds < 15 ? "urgent" : "")">@TimerText</div>
+			}
+			else
+			{
+				<div class="lobby">LOBBY</div>
+			}
+		</div>
+
+		@if ( !Dir.RoundLive && !string.IsNullOrEmpty( Dir.StatusMessage ) )
+		{
+			<div class="status">@Dir.StatusMessage</div>
+		}
+		@if ( Dir.ChatVisible )
+		{
+			<div class="chat">@Dir.ChatLine</div>
+		}
+
+		<div class="hints">
+			<span>[WASD] Move</span>
+			<span>[Space] Jump</span>
+			@if ( !Dir.RoundLive )
+			{
+				<span>Walk to the pad and press [E] to start a round</span>
+			}
+		</div>
+	}
+</root>
+
+@code
+{
+	LobbyDirector Dir => LobbyDirector.Current;
+
+	string TimerText
+	{
+		get
+		{
+			int t = Dir?.TimeLeftSeconds ?? 0;
+			if ( t < 0 ) t = 0;
+			return $"{t / 60:D2}:{t % 60:D2}";
+		}
+	}
+
+	protected override int BuildHash() => System.HashCode.Combine(
+		Dir?.State, Dir?.MenuOpen, Dir?.SuggestMenuOpen, Dir?.RoundLive,
+		Dir?.TimeLeftSeconds, Dir?.StatusMessage, Dir?.ChatLine, Dir?.ChatVisible );
+}

@@ -1,0 +1,135 @@
+{
+  "RootObject": {
+    "__guid": "f0000000-0000-4000-8000-0000000000a1",
+    "__version": 2,
+    "Flags": 0,
+    "Name": "Player",
+    "Position": "0,0,0",
+    "Rotation": "0,0,0,1",
+    "Scale": "1,1,1",
+    "Tags": "player",
+    "Enabled": true,
+    "NetworkMode": 2,
+    "NetworkFlags": 0,
+    "NetworkOrphaned": 0,
+    "NetworkTransmit": true,
+    "OwnerTransfer": 1,
+    "Components": [
+      {
+        "__type": "Sandbox.CharacterController",
+        "__guid": "f0000000-0000-4000-8000-0000000000a2",
+        "__enabled": true,
+        "Flags": 0,
+        "Acceleration": 10,
+        "Bounciness": 0.3,
+        "GroundAngle": 45,
+        "Height": 64,
+        "IgnoreLayers": "player,trigger",
+        "Radius": 16,
+        "StepHeight": 18,
+        "UseCollisionRules": false
+      },
+      {
+        "__type": "LobbySystem.Examples.LobbyPlayer",
+        "__guid": "f0000000-0000-4000-8000-0000000000a3",
+        "__enabled": true,
+        "Flags": 0,
+        "DisplayName": "Player",
+        "IsBot": false,
+        "JumpForce": 320,
+        "RunSpeed": 260,
+        "WalkSpeed": 130,
+        "Head": {
+          "_type": "gameobject",
+          "go": "f0000000-0000-4000-8000-0000000000a7"
+        },
+        "Body": {
+          "_type": "gameobject",
+          "go": "f0000000-0000-4000-8000-0000000000a4"
+        },
+        "Renderer": {
+          "_type": "component",
+          "component_id": "f0000000-0000-4000-8000-0000000000a5",
+          "go": "f0000000-0000-4000-8000-0000000000a4",
+          "component_type": "SkinnedModelRenderer"
+        }
+      }
+    ],
+    "Children": [
+      {
+        "__guid": "f0000000-0000-4000-8000-0000000000a4",
+        "__version": 2,
+        "Flags": 0,
+        "Name": "Body",
+        "Position": "0,0,0",
+        "Rotation": "0,0,0,1",
+        "Scale": "1,1,1",
+        "Tags": "",
+        "Enabled": true,
+        "NetworkMode": 2,
+        "NetworkFlags": 0,
+        "NetworkOrphaned": 0,
+        "NetworkTransmit": true,
+        "OwnerTransfer": 1,
+        "Components": [
+          {
+            "__type": "Sandbox.SkinnedModelRenderer",
+            "__guid": "f0000000-0000-4000-8000-0000000000a5",
+            "__enabled": true,
+            "Flags": 0,
+            "BodyGroups": 18446744073709551615,
+            "CreateAttachments": false,
+            "CreateBoneObjects": false,
+            "MaterialOverride": null,
+            "Model": "models/citizen_human/citizen_human_male.vmdl",
+            "RenderType": "On",
+            "Tint": "1,1,1,1",
+            "UseAnimGraph": true
+          },
+          {
+            "__type": "Sandbox.Citizen.CitizenAnimationHelper",
+            "__guid": "f0000000-0000-4000-8000-0000000000a6",
+            "__enabled": true,
+            "Flags": 0,
+            "BodyWeight": 1,
+            "EyesWeight": 1,
+            "HeadWeight": 1,
+            "LookAtEnabled": false,
+            "Target": {
+              "_type": "component",
+              "component_id": "f0000000-0000-4000-8000-0000000000a5",
+              "go": "f0000000-0000-4000-8000-0000000000a4",
+              "component_type": "SkinnedModelRenderer"
+            }
+          }
+        ],
+        "Children": []
+      },
+      {
+        "__guid": "f0000000-0000-4000-8000-0000000000a7",
+        "__version": 2,
+        "Flags": 0,
+        "Name": "Head",
+        "Position": "0,0,64",
+        "Rotation": "0,0,0,1",
+        "Scale": "1,1,1",
+        "Tags": "",
+        "Enabled": true,
+        "NetworkMode": 2,
+        "NetworkFlags": 0,
+        "NetworkOrphaned": 0,
+        "NetworkTransmit": true,
+        "OwnerTransfer": 1,
+        "Components": [],
+        "Children": []
+      }
+    ]
+  },
+  "ResourceVersion": 2,
+  "ShowInMenu": false,
+  "MenuPath": null,
+  "MenuIcon": null,
+  "DontBreakAsTemplate": false,
+  "__references": [],
+  "__version": 2
+}
