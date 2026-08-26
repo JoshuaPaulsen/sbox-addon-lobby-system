@@ -16,7 +16,9 @@
     "TickRate": 50,
     "GameNetworkType": "Multiplayer",
     "MapSelect": "Unrestricted",
-    "MapList": [ "facepunch.flatgrass" ],
+    "MapList": [
+      "facepunch.flatgrass"
+    ],
     "RankType": "None",
     "PerMapRanking": false,
     "LeaderboardType": "None",
@@ -36,9 +38,16 @@
       "Whitelist": true,
       "ReleaseMode": "Debug",
       "AssemblyReferences": [],
-      "IgnoreFolders": [ "editor", "unittest" ],
+      "IgnoreFolders": [
+        "editor",
+        "unittest"
+      ],
       "DistinctAssemblyReferences": []
     },
-    "ControlModes": { "Keyboard": true, "VR": false, "Gamepad": true }
+    "ControlModes": {
+      "Keyboard": true,
+      "VR": false,
+      "Gamepad": true
+    }
   }
 }

@@ -10,3 +10,6 @@ bin/
 Code/Properties/
 *.csproj
 *.slnx
+
+# launchSettings bakes in this machine's engine path
+**/Properties/launchSettings.json

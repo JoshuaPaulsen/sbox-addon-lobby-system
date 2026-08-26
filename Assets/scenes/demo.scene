@@ -482,7 +482,8 @@
     "TimeScale": 1,
     "WantsSystemScene": true,
     "Metadata": {
-      "Title": "demo"
+      "Title": "demo",
+      "Description": "A clean s&box multiplayer template: host + Steam-join, players spawn and roam, optional rounds via the lobby framework."
     },
     "NavMesh": {
       "Enabled": false,
@@ -503,12 +504,17 @@
         "Data": {
           "SelectionSets": []
         }
+      },
+      "Sandbox.Clutter.ClutterGridSystem": {
+        "Storage": {
+          "$blob": "6646b218-947b-4673-9501-d145d268ec6b"
+        }
       }
     }
   },
   "ResourceVersion": 3,
   "Title": "demo",
-  "Description": null,
+  "Description": "A clean s&box multiplayer template: host + Steam-join, players spawn and roam, optional rounds via the lobby framework.",
   "__references": [],
   "__version": 3
 }

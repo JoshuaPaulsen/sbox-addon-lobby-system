@@ -4,7 +4,7 @@
   "Org": "rwtrcsc",
   "Ident": "lobbysystem",
   "Schema": 1,
-  "IncludeSourceFiles": true,
+  "IncludeSourceFiles": false,
   "Resources": "/Assets/*\n/Code/*",
   "PackageReferences": [],
   "EditorReferences": null,
@@ -23,7 +23,10 @@
       "Whitelist": true,
       "ReleaseMode": "Debug",
       "AssemblyReferences": [],
-      "IgnoreFolders": [ "editor", "unittest" ],
+      "IgnoreFolders": [
+        "editor",
+        "unittest"
+      ],
       "DistinctAssemblyReferences": []
     }
   }
