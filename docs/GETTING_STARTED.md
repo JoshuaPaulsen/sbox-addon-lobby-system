@@ -13,11 +13,11 @@ This template is a **game project** you press Play on. Out of the box it spawns 
 - **ScreenPanel** — the `LobbyHud`.
 - **Mode Button** — an in-world `LobbyModeButton`; walk up and press **Use** (E) to open the mode menu.
 
-`LobbyNetworkManager.PlayerPrefab` points at `Assets/player.prefab` — the Citizen player.
+`LobbyNetworkManager.PlayerPrefab` points at `Assets/lobbysystem/player.prefab` — the Citizen player.
 
 ## The player
 
-`Assets/player.prefab` is a standard s&box Citizen: a `CharacterController`, a `Body` child with the Citizen `SkinnedModelRenderer` + `CitizenAnimationHelper`, and a `Head` child. The `LobbyPlayer` component on it does two jobs:
+`Assets/lobbysystem/player.prefab` is a standard s&box Citizen: a `CharacterController`, a `Body` child with the Citizen `SkinnedModelRenderer` + `CitizenAnimationHelper`, and a `Head` child. The `LobbyPlayer` component on it does two jobs:
 
 1. **Movement / camera / animation** — WASD + run + jump, a third-person camera (created/driven from the scene camera), and Citizen animation.
 2. **Lobby glue** — it implements `ILobbyAgent` so the framework can name, spawn, place and reset it.
