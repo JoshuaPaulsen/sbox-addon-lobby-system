@@ -1,4 +1,4 @@
-namespace LobbySystem;
+﻿namespace LobbySystem;
 
 /// <summary>
 /// In-world button that opens the mode menu for the host, or a local suggestion menu for a client. It needs
@@ -12,7 +12,7 @@ public sealed class LobbyModeButton : Component
 	[Property] public Color IdleTint { get; set; } = new Color( 0.85f, 0.4f, 0.15f );
 	[Property] public Color ActiveTint { get; set; } = new Color( 1f, 0.85f, 0.3f );
 
-	ModelRenderer _renderer;
+	ModelRenderer _renderer = null!;
 	ILobbyAgent _me;
 
 	protected override void OnStart()

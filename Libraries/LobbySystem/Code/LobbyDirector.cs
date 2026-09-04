@@ -1,4 +1,4 @@
-namespace LobbySystem;
+﻿namespace LobbySystem;
 
 /// <summary>
 /// Gamemode-agnostic round and lobby lifecycle. Drives the Lobby, Active and Ended states, the mode menu,
@@ -7,20 +7,34 @@ namespace LobbySystem;
 /// </summary>
 public sealed class LobbyDirector : Component
 {
-	public static LobbyDirector Current { get; private set; }
+	public static LobbyDirector Current { get; private set; } = null!;
 
 	[Property] public float RoundDuration { get; set; } = 180f;
 	[Property] public float RestartDelay { get; set; } = 4f;
 	[Property] public int MinPlayers { get; set; } = 2;
 
 	/// <summary>Optional map cloned in when a round starts. Leave null to play in the lobby scene.</summary>
-	[Property] public GameObject MapPrefab { get; set; }
+	[Property] public GameObject MapPrefab { get; set; } = null!;
+
+	/// <summary>
+	/// Load a workshop map package by ident (e.g. "softsplit.gm_bigcity") instead of cloning
+	/// <see cref="MapPrefab"/>. Takes precedence over the prefab when set. Each peer loads it
+	/// locally, exactly like the prefab path — set it on every peer before the round starts.
+	/// </summary>
+	[Property] public string MapIdent { get; set; } = "";
 
 	/// <summary>Lobby floor; its renderer hides once a round map has loaded.</summary>
-	[Property] public GameObject LobbyFloor { get; set; }
+	[Property] public GameObject LobbyFloor { get; set; } = null!;
 
 	/// <summary>Turn on when you use <see cref="MapPrefab"/> so clients load it too.</summary>
 	[Property, Sync( SyncFlags.FromHost )] public bool UseRoundMap { get; set; }
+
+	/// <summary>
+	/// Hold the round countdown (and round-over checks) while the round map is still loading.
+	/// Off by default — existing games keep their exact timing. Turn on so a first-time map
+	/// download on a slow connection doesn't quietly eat the round.
+	/// </summary>
+	[Property] public bool WaitForMapBeforeClock { get; set; }
 
 	[Sync( SyncFlags.FromHost )] public LobbyState State { get; set; } = LobbyState.Lobby;
 	[Sync( SyncFlags.FromHost )] public int ActiveModeIndex { get; set; }
@@ -36,15 +50,15 @@ public sealed class LobbyDirector : Component
 	float _timeRemaining;
 	float _restartAt;
 	TimeUntil _startGrace;
-	GameObject _mapInstance;
-	ModelRenderer _floorRenderer;
+	GameObject _mapInstance = null!;
+	ModelRenderer _floorRenderer = null!;
 	bool _floorResolved;
 
 	List<ILobbyAgent> _agents = new();
 	public IReadOnlyList<ILobbyAgent> Agents => _agents;
 	int LiveCount => _agents.Count;
 
-	IReadOnlyList<IGameMode> _modes;
+	IReadOnlyList<IGameMode> _modes = Array.Empty<IGameMode>();
 	public IReadOnlyList<IGameMode> Modes => _modes ?? ResolveModes();
 	public IGameMode ActiveMode => Modes.Count > 0 ? Modes[ Math.Clamp( ActiveModeIndex, 0, Modes.Count - 1 ) ] : null;
 
@@ -72,10 +86,36 @@ public sealed class LobbyDirector : Component
 	/// State also catches players who join mid-round. Drive lobby-vs-round UI off this, not State.
 	/// </summary>
 	public bool RoundLive => _roundLive || State == LobbyState.Active;
-	[Rpc.Broadcast] public void RpcSetRoundLive( bool live ) => _roundLive = live;
+	// HOST-ONLY. `_roundLive` is the single flag that decides whether a round is running at all —
+	// it gates spawning, the clock, scoring and the entire HUD. As a plain broadcast, ANY client
+	// could call it and end (or start) the round for everybody. The RPC docs are explicit that an
+	// unflagged broadcast is callable by anyone.
+	[Rpc.Broadcast( NetFlags.HostOnly )] public void RpcSetRoundLive( bool live ) => _roundLive = live;
 	void SetRoundLive( bool live ) { if ( Networking.IsActive ) RpcSetRoundLive( live ); else _roundLive = live; }
 
-	public bool MapReady => _mapInstance.IsValid();
+	/// <summary>
+	/// True when the round map exists AND its content has finished loading. The old check passed
+	/// the moment the root object was created, which on big workshop maps is seconds (or a first
+	/// download) before any geometry exists — loading screens dropped early and consumers saw the
+	/// lobby standing inside a half-streamed map. Weak hardware feels this most, so gate on
+	/// <see cref="MapInstance.IsLoaded"/> whenever the root carries a MapInstance.
+	/// </summary>
+	public bool MapReady
+	{
+		get
+		{
+			if ( !_mapInstance.IsValid() ) return false;
+			try
+			{
+				var mi = _mapInstance.Components.Get<MapInstance>() ?? _mapInstance.Components.GetInChildren<MapInstance>();
+				return mi is null || mi.IsLoaded;
+			}
+			catch
+			{
+				return true; // never let a reflection hiccup hold the round hostage
+			}
+		}
+	}
 
 	TimeUntil _nextScan;
 	void RefreshAgents()
@@ -109,12 +149,37 @@ public sealed class LobbyDirector : Component
 	}
 	public Vector3 RoundSpawnPoint( int i ) => TryRoundSpawn( i, out var p ) ? p : Vector3.Up * 300f;
 
+	/// <summary>
+	/// Adopt a pre-created map root ("warm loading"): a consumer may start loading the round map
+	/// early — during a map vote, behind an opaque screen — and hand it over here. The director
+	/// then treats it exactly like a map it created itself: <see cref="MapReady"/> tracks its
+	/// load, and the normal lifecycle owns its teardown. No-op if a map instance already exists.
+	/// </summary>
+	public void AdoptMapInstance( GameObject root )
+	{
+		if ( _mapInstance.IsValid() || !root.IsValid() ) return;
+		_mapInstance = root;
+	}
+
 	void SyncRoundMap()
 	{
-		if ( !UseRoundMap || MapPrefab is null ) return;
-		// Clone once. Toggling or destroying a MapInstance cancels its async load.
-		if ( RoundLive && !_mapInstance.IsValid() )
+		if ( !UseRoundMap ) return;
+		if ( !RoundLive || _mapInstance.IsValid() ) return;
+
+		// Create once. Toggling or destroying a MapInstance cancels its async load.
+		if ( !string.IsNullOrWhiteSpace( MapIdent ) )
+		{
+			// Workshop package path: build the map root here instead of needing a prefab per map.
+			var go = Scene.CreateObject();
+			go.Name = $"Round Map ({MapIdent})";
+			var mi = go.Components.Create<MapInstance>();
+			mi.MapName = MapIdent;
+			_mapInstance = go;
+		}
+		else if ( MapPrefab is not null )
+		{
 			_mapInstance = MapPrefab.Clone( Vector3.Zero );
+		}
 	}
 
 	void SyncLobbyFloor()
@@ -138,11 +203,15 @@ public sealed class LobbyDirector : Component
 		else SuggestMenuOpen = !SuggestMenuOpen;
 	}
 	public void RequestOpenMenu() { if ( !Networking.IsActive ) OpenMenu(); else RpcOpenMenu(); }
-	[Rpc.Broadcast] public void RpcOpenMenu() { if ( Networking.IsActive && !Networking.IsHost ) return; OpenMenu(); }
+	// The inner `!IsHost return` guarded the RECEIVER, not the sender — every non-host peer ignored
+	// the call, so a client invoking this still executed it ON THE HOST, which is the machine whose
+	// state actually matters. NetFlags.HostOnly stops it being sent in the first place; the inner
+	// check stays as belt-and-braces.
+	[Rpc.Broadcast( NetFlags.HostOnly )] public void RpcOpenMenu() { if ( Networking.IsActive && !Networking.IsHost ) return; OpenMenu(); }
 	void OpenMenu() { MenuOpen = true; State = LobbyState.Lobby; }
 
 	public void RequestCloseMenu() { SuggestMenuOpen = false; if ( !Networking.IsActive ) CloseMenu(); else RpcCloseMenu(); }
-	[Rpc.Broadcast] public void RpcCloseMenu() { if ( Networking.IsActive && !Networking.IsHost ) return; CloseMenu(); }
+	[Rpc.Broadcast( NetFlags.HostOnly )] public void RpcCloseMenu() { if ( Networking.IsActive && !Networking.IsHost ) return; CloseMenu(); }
 	void CloseMenu() { MenuOpen = false; State = LobbyState.Lobby; Banner = ""; }
 
 	/// <summary>Called by the HUD when a mode is clicked. The host starts it; a client suggests it.</summary>
@@ -163,7 +232,22 @@ public sealed class LobbyDirector : Component
 		string mode = (index >= 0 && index < Modes.Count) ? Modes[index].DisplayName : "a mode";
 		RpcSuggest( who, mode );
 	}
-	[Rpc.Broadcast] public void RpcSuggest( string who, string mode ) { ChatLine = $"{who} suggested starting {mode}"; _chatUntil = 6f; }
+	// NOT host-only: a suggestion is a CLIENT telling the room it wants a mode — that's the whole
+	// feature, so gating it to the host would delete it. But it writes a string straight onto every
+	// peer's HUD from an unverified sender, which is a broadcast text channel with no bounds.
+	// Clamp both fields and take the name from the connection rather than the payload.
+	[Rpc.Broadcast]
+	public void RpcSuggest( string who, string mode )
+	{
+		try { if ( Rpc.Caller is not null ) who = Rpc.Caller.DisplayName; } catch { }
+		who = string.IsNullOrWhiteSpace( who ) ? "Someone" : who;
+		if ( who.Length > 48 ) who = who[..48];
+		mode = string.IsNullOrWhiteSpace( mode ) ? "a mode" : mode;
+		if ( mode.Length > 48 ) mode = mode[..48];
+
+		ChatLine = $"{who} suggested starting {mode}";
+		_chatUntil = 6f;
+	}
 
 	protected override void OnUpdate()
 	{
@@ -183,6 +267,7 @@ public sealed class LobbyDirector : Component
 				break;
 
 			case LobbyState.Active:
+				if ( WaitForMapBeforeClock && UseRoundMap && !MapReady ) break; // map still loading — clock holds
 				_timeRemaining -= Time.Delta;
 				int secs = (int)MathF.Ceiling( _timeRemaining );
 				if ( secs != TimeLeftSeconds ) TimeLeftSeconds = secs;

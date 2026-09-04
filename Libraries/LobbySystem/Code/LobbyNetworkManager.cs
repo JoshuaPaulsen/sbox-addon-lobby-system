@@ -1,4 +1,4 @@
-namespace LobbySystem;
+﻿namespace LobbySystem;
 
 /// <summary>
 /// Auto-hosts a lobby so Steam friends can join, and keeps one networked pawn per connection plus optional
@@ -7,7 +7,7 @@ namespace LobbySystem;
 /// </summary>
 public sealed class LobbyNetworkManager : Component, Component.INetworkListener
 {
-	[Property] public GameObject PlayerPrefab { get; set; }
+	[Property] public GameObject PlayerPrefab { get; set; } = null!;
 	[Property] public int BotCount { get; set; } = 1;
 
 	/// <summary>When true, bots only exist during an active round.</summary>
@@ -32,13 +32,29 @@ public sealed class LobbyNetworkManager : Component, Component.INetworkListener
 
 	protected override async Task OnLoad()
 	{
+		// Only meaningful in a real game session. Opening the scene in the editor's scene view used
+		// to reach CreateLobby, which throws UnauthorizedAccessException ("Unable to create a lobby
+		// outside of a game") — two red console errors on every scene open, in every customer's
+		// project. Editor PLAY sessions are non-editor scenes, so they still host normally.
+		if ( Scene.IsEditor ) return;
+
 		// When joining a friend the engine is mid-connect and IsActive is briefly false, so poll for a
 		// moment before hosting. Otherwise a joiner would spin up its own solo lobby.
 		if ( Networking.IsActive ) return;
 		for ( int i = 0; i < 6 && !Networking.IsActive; i++ )
 			await Task.DelayRealtimeSeconds( 0.1f );
-		if ( !Networking.IsActive )
+		if ( Networking.IsActive ) return;
+
+		try
+		{
 			Networking.CreateLobby( new() );
+		}
+		catch ( Exception e )
+		{
+			// A platform refusal shouldn't paint the console red — the game still runs solo,
+			// and a Steam friend can't join a session the platform wouldn't open anyway.
+			Log.Info( $"[LobbySystem] Lobby not created: {e.Message}" );
+		}
 	}
 
 	void INetworkListener.OnActive( Connection channel ) => _reconcileNow = true;

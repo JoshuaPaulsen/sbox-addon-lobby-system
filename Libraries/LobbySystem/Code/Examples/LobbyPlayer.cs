@@ -1,4 +1,4 @@
-using Sandbox;
+﻿using Sandbox;
 using Sandbox.Citizen;
 
 namespace LobbySystem.Examples;
@@ -13,17 +13,17 @@ public sealed class LobbyPlayer : Component, ILobbyAgent
 	[Property] public float WalkSpeed { get; set; } = 130f;
 	[Property] public float RunSpeed { get; set; } = 260f;
 	[Property] public float JumpForce { get; set; } = 320f;
-	[Property] public GameObject Head { get; set; }
-	[Property] public GameObject Body { get; set; }
-	[Property] public SkinnedModelRenderer Renderer { get; set; }
+	[Property] public GameObject Head { get; set; } = null!;
+	[Property] public GameObject Body { get; set; } = null!;
+	[Property] public SkinnedModelRenderer Renderer { get; set; } = null!;
 
 	[Sync( SyncFlags.FromHost )] public bool IsBot { get; set; }
 	[Sync( SyncFlags.FromHost )] public string DisplayName { get; set; } = "Player";
 	[Sync] public float LookYaw { get; set; }
 
-	CharacterController _cc;
-	CitizenAnimationHelper _anim;
-	CameraComponent _cam;
+	CharacterController _cc = null!;
+	CitizenAnimationHelper _anim = null!;
+	CameraComponent _cam = null!;
 	Vector3 _wish;
 	Vector3 _lastPos;
 	Vector3 _proxyVel;
@@ -41,7 +41,9 @@ public sealed class LobbyPlayer : Component, ILobbyAgent
 	public void InitAgent( bool isBot, string displayName ) { IsBot = isBot; DisplayName = displayName; }
 	public void ResetForRound() { if ( _cc is not null ) _cc.Velocity = Vector3.Zero; }
 
-	[Rpc.Broadcast]
+	// HOST-ONLY. Teleporting a pawn is round authority — spawn placement, void rescues, the return
+	// to the lobby all go through here. Unflagged, any client could move any pawn anywhere.
+	[Rpc.Broadcast( NetFlags.HostOnly )]
 	public void TeleportTo( Vector3 position )
 	{
 		WorldPosition = position;
