@@ -58,28 +58,8 @@ public sealed class LobbyDirector : Component
 	public IReadOnlyList<ILobbyAgent> Agents => _agents;
 	int LiveCount => _agents.Count;
 
-	// THE LAZY-RESOLVE SENTINEL WAS NULL, AND AN `= Array.Empty<>()` INITIALISER DESTROYED IT.
-	//
-	// This read `_modes ?? ResolveModes()` against a field that a nullable-annotation pass had
-	// given a non-null default. `??` therefore never fired, `ResolveModes()` was never called even
-	// once, and `Modes` was permanently empty — so `StartRound`'s first line, `if ( Modes.Count ==
-	// 0 ) return;`, silently refused every round for every consumer of this library. The symptom
-	// was a round that logged its own start banner and then never began: the player left standing
-	// in the lobby, with the map loaded around them.
-	//
-	// It cost several playtests because nothing about it looks wrong. The initialiser is good
-	// practice in isolation and silences a real warning; it just happened to be the null this
-	// property used as "not resolved yet". A warning fix must not change behaviour, and this one
-	// did — so the sentinel is now an explicit bool that says what it means and cannot be
-	// annotated away.
-	//
-	// The flag is only set once a NON-EMPTY catalog is found. Caching an empty result would
-	// reintroduce the same permanent failure by a slower route: the director can easily out-race
-	// the catalog's registration on the first frames, and "resolved to nothing, never look again"
-	// is exactly the bug above.
 	IReadOnlyList<IGameMode> _modes = Array.Empty<IGameMode>();
-	bool _modesResolved;
-	public IReadOnlyList<IGameMode> Modes => _modesResolved ? _modes : ResolveModes();
+	public IReadOnlyList<IGameMode> Modes => _modes ?? ResolveModes();
 	public IGameMode ActiveMode => Modes.Count > 0 ? Modes[ Math.Clamp( ActiveModeIndex, 0, Modes.Count - 1 ) ] : null;
 
 	IReadOnlyList<IGameMode> ResolveModes()
@@ -87,17 +67,7 @@ public sealed class LobbyDirector : Component
 		try
 		{
 			var catalog = Scene.GetAllComponents<IGameModeCatalog>().FirstOrDefault();
-			var found = catalog?.Modes;
-
-			if ( found is not null && found.Count > 0 )
-			{
-				_modes = found;
-				_modesResolved = true;   // latch ONLY on success; keep retrying otherwise
-			}
-			else
-			{
-				_modes = Array.Empty<IGameMode>();
-			}
+			_modes = catalog?.Modes ?? (IReadOnlyList<IGameMode>)Array.Empty<IGameMode>();
 		}
 		catch
 		{
