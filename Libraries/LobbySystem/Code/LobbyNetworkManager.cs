@@ -15,6 +15,15 @@ public sealed class LobbyNetworkManager : Component, Component.INetworkListener
 
 	[Property] public Color BotTint { get; set; } = new Color( 1f, 0.35f, 0.3f );
 
+	/// <summary>
+	/// End the session when the host leaves, instead of handing it to another player. Since the
+	/// September 2026 engine update a graceful host leave migrates the game by default, but only
+	/// [Sync] state and networked objects survive the hand-off — the director's round flow, bots
+	/// and timers are host-side state that does not — so a migrated lobby would carry on with a
+	/// round nobody can end. Defaults to on until this library supports migration properly.
+	/// </summary>
+	[Property] public bool DestroyWhenHostLeaves { get; set; } = true;
+
 	// Lobby spawn ring, used before a round map loads.
 	readonly Vector3[] _spawns =
 	{
@@ -47,7 +56,7 @@ public sealed class LobbyNetworkManager : Component, Component.INetworkListener
 
 		try
 		{
-			Networking.CreateLobby( new() );
+			Networking.CreateLobby( new() { DestroyWhenHostLeaves = DestroyWhenHostLeaves } );
 		}
 		catch ( Exception e )
 		{
