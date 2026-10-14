@@ -225,7 +225,15 @@ public sealed class LobbyPlayer : Component, ILobbyAgent
 
 	async void ApplyClothingAsync( ClothingContainer clothing )
 	{
-		try { await clothing.ApplyAsync( Renderer, System.Threading.CancellationToken.None ); }
+		// The Dresser sequence the engine's own menu uses (26.10.13): ClothingContainer.ApplyAsync
+		// is obsolete and hides the wrong body parts on the human model.
+		try
+		{
+			var dresser = Dresser.GetOrCreate( Renderer );
+			clothing.Normalize();
+			dresser.UpdateAppearance( clothing );
+			await dresser.ApplyAsync( clothing, System.Threading.CancellationToken.None );
+		}
 		catch { }
 	}
 }
